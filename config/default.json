@@ -1,3 +1,4 @@
 {
-    "mongoURL":"mongodb+srv://zenithjhony:zenithjhony@cluster0.pr4pz.mongodb.net/petblogcontent?retryWrites=true&w=majority"
+    "mongoURL":"mongodb+srv://zenithjhony:zenithjhony@cluster0.pr4pz.mongodb.net/petblogcontent?retryWrites=true&w=majority",
+    "jwtSecret":"mysecrettoken"
 }
