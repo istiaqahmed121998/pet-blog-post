@@ -4,17 +4,17 @@ const config = require('config')
 const {check,validationResult} = require('express-validator');
 const bcrypt=require('bcrypt');
 const routerUser = express.Router();
+const upload = require('../../middleware/upload');
 
 const User = require('../../Model/User');
 //@route GET api/user
 //@desc Test router
 //@access Public
-
 routerUser.get('/',(req,res)=>{
 res.send('User Router');
 })
 
-routerUser.post('/create-user',[
+routerUser.post('/create-user',upload.single('avatar'),[
     check('name','Name is requires').not().isEmpty(),
     // username must be an email
     check('email').isEmail(),
@@ -33,6 +33,7 @@ routerUser.post('/create-user',[
     return res.status(400).json({ errors: errors.array() });
   }
   const{name,email,password,phone}=req.body;
+  console.log(req.file)
   
   try{
     let user=await User.findOne({email});
@@ -44,7 +45,8 @@ routerUser.post('/create-user',[
       name,
       email,
       password,
-      phone
+      phone,
+      avatar:req.file.path
     });
     const salt =await bcrypt.genSalt(10);
     user.password=await bcrypt.hash(password,salt);
