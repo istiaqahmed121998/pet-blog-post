@@ -10,6 +10,10 @@ const UserScheme= new mongoose.Schema({
         required:true,
         unique:true
     },
+    role:{
+        type:String,
+        default:'writer'
+    },
     phone:{
         type:String,
         unique:true
