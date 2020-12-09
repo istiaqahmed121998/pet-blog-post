@@ -7,6 +7,13 @@ const profileSchema = new mongoose.Schema({
         ref:'user'
 
     },
+    avatar:{
+        type:String,
+        default:null
+    },
+    dateofbirth:{
+        type:Date,
+    },
     bio:{
         type:String
     },
