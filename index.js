@@ -23,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use('/api/user',require('./Router/api/user'));
 app.use('/api/profile',require('./Router/api/profile'));
 app.use('/api/auth',require('./Router/api/auth'));
+app.use('/api/blog',require('./Router/api/blog'));
 app.listen(PORT,()=>{
     console.log(`Server started on port ${PORT}`);
 })

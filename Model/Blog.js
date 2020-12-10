@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-module.exports = mongoose.model('post',new mongoose.Schema({
+module.exports = mongoose.model('blog',new mongoose.Schema({
     title:{
         type:String,
         required:true
@@ -14,13 +14,16 @@ module.exports = mongoose.model('post',new mongoose.Schema({
     summary:{
         type:String,
     },
+    image:{
+        type:String
+    },
     text:{
         type:String,
         required:true
     },
     author:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:'user'
+        ref:'profile'
     },
     comments:[
         {
