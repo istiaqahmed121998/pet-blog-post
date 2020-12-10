@@ -83,17 +83,33 @@ routerUser.get('/usersList',auth, async(req, res) =>{
   // }else{
   //   return res.status(400).json({ msg: "You are not admin" });
   // }
-  let user=await User.findById(req.user.id)
-  if(user){
-    console.log(user);
-  }
-  await User.find({}, function(err, users) {
-    var userMap = {};
-    users.forEach(function(user) {
-      userMap[user._id] = user;
-    });
+  // await User.findOne({_id:req.user.id},(err,userrole)=>{
+  //   res.send(userrole);
+  //   // if(userrole.role==='admin'){
+  //   // }
+  // })
+  // await User.find({}, function(err, users) {
+  //   var userMap = {};
+  //   users.forEach(function(user) {
+  //     userMap[user._id] = user;
+  //   });
 
-    res.send(userMap);  
-  });
+  //   res.send(userMap);  
+  // });
+  // await User.findOne({_id:req.user.id}).then((user)=> {
+
+  //       var userMap = {};
+  //   users.forEach(function(user) {
+  //     userMap[user._id] = user;
+  //   });
+
+  //   res.send(userMap);  
+  // }).catch(err=>res.status(400).json({msg:"There is no profile linked to this account"}) )
+  var id = "5fd0dde515e62b0a7f136cbb";
+  
+  console.log(id);
+  User.findOne({_id:"5fd0dde515e62b0a7f136cbb"}, function (err, user) { 
+    res.send(user)
+  } );
 });
 module.exports = routerUser;

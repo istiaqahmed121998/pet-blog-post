@@ -1,0 +1,50 @@
+const mongoose = require('mongoose');
+
+module.exports = mongoose.model('post',new mongoose.Schema({
+    title:{
+        type:String,
+        required:true
+    },
+    metaTitle:{
+        type:String
+    },
+    slug:{
+        type:String,
+    },
+    summary:{
+        type:String,
+    },
+    text:{
+        type:String,
+        required:true
+    },
+    author:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:'user'
+    },
+    comments:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'comment'
+        }
+    ],
+    tags:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'tag'
+        }
+    ],
+    catergory:[
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref:'catergory'
+        }
+    ],
+    created:{
+        type:Date,
+        default:Date.now
+    },
+    updated:[{
+        type:Date
+    }]
+}));
