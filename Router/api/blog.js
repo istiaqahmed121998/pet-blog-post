@@ -12,12 +12,6 @@ const User = require('../../Model/User')
 
 //@get all blogs
 routerBlog.get('/',async(req,res)=>{
-    res.send('blogs');
-    await User.findById(req.user.id).select('-password').then((user)=>{
-        res.json(user);
-    }).catch((err)=>{
-        res.status(500).send(`Server Error`)
-    })
     await Blog.find({}, function(err, blogs) {
     var blogMap = {};
     blogs.forEach(function(blog) {
@@ -38,6 +32,11 @@ routerBlog.get('/:id',async(req,res)=>{
 });
 
 //@edit a specific blog
+routerBlog.post('edit/:id',async(req,res)=>{
+    res.send('blog post'+req.params.id);
+});
+//@delete a specific blog
+
 routerBlog.post('edit/:id',async(req,res)=>{
     res.send('blog post'+req.params.id);
 });
