@@ -1,55 +1,209 @@
 const express= require('express');
 const routerBlog = express.Router();
+const upload = require('../../middleware/upload')
 const Blog = require('../../Model/Blog');
 const Category = require('../../Model/Category');
 const Comment=require('../../Model/Comment');
 const Tag=require('../../Model/Tag');
 const Profile=require('../../Model/Profile');
-const User = require('../../Model/User')
+const User = require('../../Model/User');
+const { check ,validationResult} = require('express-validator');
 //@route GET api/blog
 //@desc Test router
 //@access Public
 
 //@get all blogs
-routerBlog.get('/',async(req,res)=>{
-    await Blog.find({}, function(err, blogs) {
-    var blogMap = {};
-    blogs.forEach(function(blog) {
-        blogMap[blogs._id] = blog;
-    });
-        res.send(blogMap);  
-    });
+routerBlog.route('/')
+.get(async(req,res,next) => {
+    await Blog.find({})
+    .then((blogs) => {
+        res.json(blogs);
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.post([
+    check('title','Title is required').not(),
+    check('slug').not(),
+    check('text').isLength({min:1000}),
+],upload.single('image'),async(req, res, next) => {
+    await Blog.create(req.body)
+    .then((blog) => {
+        console.log('Blog Created ', blog);
+        res.json(blog);
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.put(async (req, res, next) => {
+    res.statusCode = 403;
+    res.end('PUT operation not supported on /dishes');
+})
+.delete(async(req, res, next) => {
+    await Blog.remove({})
+    .then((resp) => {
+        res.json(resp);
+    }, (err) => next(err))
+    .catch((err) => next(err));    
 });
 
-//@post a new blog
-routerBlog.post('/new',async(req,res)=>{
-    res.send('blog post');//check user profile is created or not.If not created then err and if created then blog will be post by this profile.
+routerBlog.route('/:blogId')
+.get(async (req,res,next) => {
+    await Blog.findById(req.params.blogId)
+    .then((blog) => {
+        res.json(blog);
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.post(async (req, res, next) => {
+    res.statusCode = 403;
+    res.end('POST operation not supported on /dishes/'+ req.params.dishId);
+})
+.put(async (req, res, next) => {
+    await Blog.findByIdAndUpdate(req.params.blogId, {
+        $set: req.body
+    }, { new: true })
+    .then((blog) => {
+        res.json(blog);
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.delete(async (req, res, next) => {
+    await Blog.findByIdAndRemove(req.params.blogId)
+    .then((blog) => {
+        res.json(blog);
+    }, (err) => next(err))
+    .catch((err) => next(err));
 });
 
-//@get a specific blog
-routerBlog.get('/:id',async(req,res)=>{
-    res.send('blog post'+req.params.id);
+routerBlog.route('/:blogId/comments')
+.get(async(req,res,next) => {
+    await Blog.findById(req.params.blogId)
+    .then((blog) => {
+        if (blog != null) {
+            res.json(blog.comments);
+        }
+        else {
+            err = new Error('Blog ' + req.params.dishId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.post(async(req, res, next) => {
+    await Blog.findById(req.params.blogId)
+    .then((blog) => {
+        if (blog != null) {
+            blog.comments.push(req.body);
+            blog.save()
+            .then((blog) => {
+                res.json(blog);                
+            }, (err) => next(err));
+        }
+        else {
+            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.put(async(req, res, next) => {
+    res.statusCode = 403;
+    res.end('PUT operation not supported on /dishes/'
+        + req.params.dishId + '/comments');
+})
+.delete(async(req, res, next) => {
+    await Blog.findById(req.params.dishId)
+    .then((blog) => {
+        if (blog != null) {
+            for (var i = (blog.comments.length -1); i >= 0; i--) {
+                blog.comments.id(blog.comments[i]._id).remove();
+            }
+            blog.save()
+            .then((blog) => {
+                res.json(blog);                
+            }, (err) => next(err));
+        }
+        else {
+            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));    
 });
 
-//@edit a specific blog
-routerBlog.post('edit/:id',async(req,res)=>{
-    res.send('blog post'+req.params.id);
-});
-//@delete a specific blog
-
-routerBlog.post('edit/:id',async(req,res)=>{
-    res.send('blog post'+req.params.id);
-});
-
-//@post a comment on a specific blog
-
-routerBlog.post('/:id/comment',async(req,res)=>{
-    res.send('new comment '+req.params.id);
-});
-
-//@edit a comment on a specific blog
-routerBlog.post('/:id/edit/comment/:id',async(req,res)=>{
-    res.send('new comment '+req.params.id);
-});
-
+routerBlog.route('/:blogId/comments/:commentId')
+.get(async(req,res,next) => {
+    await Blog.findById(req.params.blogId)
+    .then((blog) => {
+        if (blog != null && blog.comments.id(req.params.commentId) != null) {
+            res.json(dish.comments.id(req.params.commentId));
+        }
+        else if (dish == null) {
+            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+        else {
+            err = new Error('Comment ' + req.params.commentId + ' not found');
+            err.status = 404;
+            return next(err);            
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.post(async(req, res, next) => {
+    res.statusCode = 403;
+    res.end('POST operation not supported on /dishes/'+ req.params.dishId
+        + '/comments/' + req.params.commentId);
+})
+.put(async(req, res, next) => {
+    await Blog.findById(req.params.dishId)
+    .then((blog) => {
+        if (blog != null && blog.comments.id(req.params.commentId) != null) {
+            if (req.body.comment) {
+                dish.comments.id(req.params.commentId).comment = req.body.comment;                
+            }
+            dish.save()
+            .then((blog) => {
+                res.json(blog);                
+            }, (err) => next(err));
+        }
+        else if (blog == null) {
+            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+        else {
+            err = new Error('Comment ' + req.params.commentId + ' not found');
+            err.status = 404;
+            return next(err);            
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
+.delete(async(req, res, next) => {
+    await Blog.findById(req.params.blogId)
+    .then((blog) => {
+        if (blog != null && blog.comments.id(req.params.commentId) != null) {
+            blog.comments.id(req.params.commentId).remove();
+            blog.save()
+            .then((blog) => {
+                res.json(blog);                
+            }, (err) => next(err));
+        }
+        else if (blog == null) {
+            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err.status = 404;
+            return next(err);
+        }
+        else {
+            err = new Error('Comment ' + req.params.commentId + ' not found');
+            err.status = 404;
+            return next(err);            
+        }
+    }, (err) => next(err))
+    .catch((err) => next(err));
+})
 module.exports =routerBlog;

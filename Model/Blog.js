@@ -10,6 +10,8 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
     },
     slug:{
         type:String,
+        unique: true,
+        required:true
     },
     summary:{
         type:String,
