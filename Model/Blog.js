@@ -10,8 +10,8 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
     },
     slug:{
         type:String,
-        unique: true,
-        required:true
+        // unique: true,
+        // required:true
     },
     summary:{
         type:String,
@@ -50,6 +50,7 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
         default:Date.now
     },
     updated:[{
-        type:Date
+        type:Date,
+        default:Date.now
     }]
 }));

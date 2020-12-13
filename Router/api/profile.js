@@ -18,7 +18,6 @@ routerProfile.post('/me',auth,upload.single('avatar'),[
     check('bio')
     .trim()
     .escape(),
-
 ],async(req,res)=>{
     const {dateofbirth,facebook,twitter,linkedin,instagram,website}=req.body;
     const profileField={};

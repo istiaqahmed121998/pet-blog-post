@@ -1,6 +1,7 @@
 const express= require('express');
 const routerBlog = express.Router();
-const upload = require('../../middleware/upload')
+const upload = require('../../middleware/upload');
+const slugTitle = require('../../middleware/slug');
 const Blog = require('../../Model/Blog');
 const Category = require('../../Model/Category');
 const Comment=require('../../Model/Comment');
@@ -20,18 +21,32 @@ routerBlog.route('/')
         res.json(blogs);
     }, (err) => next(err))
     .catch((err) => next(err));
-})
-.post([
+}).post([
     check('title','Title is required').not(),
-    check('slug').not(),
     check('text').isLength({min:1000}),
 ],upload.single('image'),async(req, res, next) => {
-    await Blog.create(req.body)
-    .then((blog) => {
-        console.log('Blog Created ', blog);
-        res.json(blog);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+    const{title,metaTitle,text}=req.body;
+    const article={};
+    article.title=title;
+    article.metaTitle=metaTitle;
+    article.slug=slugTitle.slugUrl(title);
+    article.text=text;
+    article.updated=[new Date()];
+    if(req.file)
+        article.image=req.file.path;
+        await Blog.findOne({slug:article.slug},async(err,blog)=>{
+            if(blog){
+                return res.status(400).json({ msg: "Blog already exist" });
+            }
+            blog=new Blog(article);
+            await blog.save()
+            .then((blog) => {
+                console.log('Blog Created ', blog);
+                res.json(blog);
+            }, (err) => next(err))
+        .catch((err) => next(err));
+    })
+
 })
 .put(async (req, res, next) => {
     res.statusCode = 403;
