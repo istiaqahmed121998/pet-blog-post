@@ -1,11 +1,12 @@
 const express= require('express');
 const jwt = require('jsonwebtoken');
-const config = require('config')
+const config = require('config');
 const {check,validationResult} = require('express-validator');
-const bcrypt=require('bcrypt');
 const routerUser = express.Router();
 const auth=require('../../middleware/auth');
 const User = require('../../Model/User');
+const utils=require('../../lib/utils');
+
 //@route GET api/user
 //@desc Test router
 //@access Public
@@ -16,7 +17,7 @@ res.send('User Router');
 routerUser.post('/create-user',[
     check('name','Name is requires').not().isEmpty(),
     // username must be an email
-    check('email').isEmail(),
+    check('username').isEmail(),
     // password must be at least 5 chars long
     check('password').isLength({ min: 5 }),
     
@@ -26,90 +27,76 @@ routerUser.post('/create-user',[
       }
       return true;
     }),
-  ],async (req,res,next)=>{
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  const{name,email,password,phone}=req.body;
-  
-  try{
-    let user=await User.findOne({email});
-    if(user){
-      return res.status(400).json({ msg: "User already exist" });
+  ],
+  async (req,res,next)=>{
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-    user = new User({
-      name,
-      email,
-      password,
-      phone,
-    });
-    const salt =await bcrypt.genSalt(10);
-    user.password=await bcrypt.hash(password,salt);
-  
-    await user.save();
-    const payload={
-      user:{
-        id:user.id
-      }
-    }
-    jwt.sign(payload,
-      config.get('jwtSecret'),
-      {expiresIn:360000},
-      (err,token)=>{
-        if (err) throw err;
-        res.json({token})
-      }
-      )
-  }
-  catch(err){
-    console.error(err.message);
+    
+    const{name,email,password,phone}=req.body;
 
-    res.status(500).send(`Server Error`);
+    try{
+      let user=await User.findOne({email});
+      if(user){
+        return res.status(400).json({ msg: "User already exist" });
+      }
+      const saltHash = utils.genPassword(password);
 
-  }
-  }
-)
-routerUser.get('/usersList',auth, async(req, res) =>{
-  
-  // let user=User.findOne({user:req.user.id},(err,user)=>{
-  //   console.log(user.role)
-  //   if(user.role==='admin'){
+      const salt = saltHash.salt;
+      const hash = saltHash.hash;
+      user = new User({
+        name,
+        email,
+        hash,
+        salt,
+        phone,
+      });
       
-  //   }
-  // })
-  // if(req.user.role==='admin'){
-
-  // }else{
-  //   return res.status(400).json({ msg: "You are not admin" });
-  // }
-  // await User.findOne({_id:req.user.id},(err,userrole)=>{
-  //   res.send(userrole);
-  //   // if(userrole.role==='admin'){
-  //   // }
-  // })
-  // await User.find({}, function(err, users) {
-  //   var userMap = {};
-  //   users.forEach(function(user) {
-  //     userMap[user._id] = user;
-  //   });
-
-  //   res.send(userMap);  
-  // });
-  // await User.findOne({_id:req.user.id}).then((user)=> {
-
-  //       var userMap = {};
-  //   users.forEach(function(user) {
-  //     userMap[user._id] = user;
-  //   });
-
-  //   res.send(userMap);  
-  // }).catch(err=>res.status(400).json({msg:"There is no profile linked to this account"}) )
-  var id = "5fd0dde515e62b0a7f136cbb";
+    
+      await user.save();
+      res.json({success: true, token: utils.issueJWT(user), status: 'You are successfully signed up!'});
+    }  catch(err){
+      console.error(err.message);
   
-  console.log(id);
-  User.findOne({_id:"5fd0dde515e62b0a7f136cbb"}, function (err, user) { 
-    res.send(user)
-  } );
+      res.status(500).send(`Server Error`);
+  
+    }
+  }  
+);
+routerUser.post('/login', (req, res) => {
+  const {email,password}=req.body;
+  User.findOne({ email })
+  .then((user) => {
+
+      if (!user) {
+          res.status(401).json({ success: false, msg: "could not find user" });
+      }
+
+      // Function defined at bottom of app.js
+      const isValid = utils.validPassword(password, user.hash, user.salt);
+
+      if (isValid) {
+
+          res.status(200).json({ "success": true, "token": utils.issueJWT(user) });
+
+      } else {
+
+          res.status(401).json({ success: false, msg: "you entered the wrong password" });
+
+      }
+
+  })
+  .catch((err) => {   
+      next(err);
+  });
+});
+routerUser.get('/protectedAdmin',auth.verifyUser,auth.verifyAdmin,async(req,res)=>{
+
+  res.send('user');
+});
+routerUser.get('/protectedWritter',auth.verifyUser,auth.verifyWritter,async(req,res)=>{
+
+  res.send('writter');
 });
 module.exports = routerUser;

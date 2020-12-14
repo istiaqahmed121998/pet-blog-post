@@ -5,7 +5,7 @@ module.exports = mongoose.model('comment',new mongoose.Schema({
         type:String,
         required:true
     },
-    author:{
+    commenter:{
         type:mongoose.Schema.Types.ObjectId,
         ref:'user'
     },

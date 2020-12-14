@@ -9,10 +9,10 @@ const Tag=require('../../Model/Tag');
 const Profile=require('../../Model/Profile');
 const User = require('../../Model/User');
 const { check ,validationResult} = require('express-validator');
+const auth=require('../../middleware/auth');
 //@route GET api/blog
 //@desc Test router
 //@access Public
-
 //@get all blogs
 routerBlog.route('/')
 .get(async(req,res,next) => {
@@ -24,7 +24,7 @@ routerBlog.route('/')
 }).post([
     check('title','Title is required').not(),
     check('text').isLength({min:1000}),
-],upload.single('image'),async(req, res, next) => {
+],auth.verifyUser,auth.verifyWritter,upload.single('image'),async(req, res, next) => {
     const{title,metaTitle,text}=req.body;
     const article={};
     article.title=title;
@@ -34,23 +34,22 @@ routerBlog.route('/')
     article.updated=[new Date()];
     if(req.file)
         article.image=req.file.path;
-        await Blog.findOne({slug:article.slug},async(err,blog)=>{
-            if(blog){
-                return res.status(400).json({ msg: "Blog already exist" });
-            }
-            blog=new Blog(article);
-            await blog.save()
-            .then((blog) => {
-                console.log('Blog Created ', blog);
-                res.json(blog);
-            }, (err) => next(err))
+    await Blog.findOne({slug:article.slug},async(err,blog)=>{
+        if(blog){
+            return res.status(400).json({ msg: "Blog already exist" });
+        }
+        blog=new Blog(article);
+        await blog.save()
+        .then((blog) => {
+            res.json(blog);
+        }, (err) => next(err))
         .catch((err) => next(err));
-    })
+    });
 
 })
 .put(async (req, res, next) => {
     res.statusCode = 403;
-    res.end('PUT operation not supported on /dishes');
+    res.end('PUT operation not supported on /blogs');
 })
 .delete(async(req, res, next) => {
     await Blog.remove({})
@@ -70,7 +69,7 @@ routerBlog.route('/:blogId')
 })
 .post(async (req, res, next) => {
     res.statusCode = 403;
-    res.end('POST operation not supported on /dishes/'+ req.params.dishId);
+    res.end('POST operation not supported on /blogs/'+ req.params.blogId);
 })
 .put(async (req, res, next) => {
     await Blog.findByIdAndUpdate(req.params.blogId, {
@@ -97,7 +96,7 @@ routerBlog.route('/:blogId/comments')
             res.json(blog.comments);
         }
         else {
-            err = new Error('Blog ' + req.params.dishId + ' not found');
+            err = new Error('Blog ' + req.params.blogId + ' not found');
             err.status = 404;
             return next(err);
         }
@@ -124,7 +123,7 @@ routerBlog.route('/:blogId/comments')
 })
 .put(async(req, res, next) => {
     res.statusCode = 403;
-    res.end('PUT operation not supported on /dishes/'
+    res.end('PUT operation not supported on /Blog/'
         + req.params.dishId + '/comments');
 })
 .delete(async(req, res, next) => {

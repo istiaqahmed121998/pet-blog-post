@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
-module.exports = User= mongoose.model('user',new mongoose.Schema({
+
+const User=new mongoose.Schema({
     name:{
         type:String,
-        required:true
+        // required:true
     },
     email:{
         type:String,
@@ -10,19 +11,26 @@ module.exports = User= mongoose.model('user',new mongoose.Schema({
         unique:true
     },
     role:{
-        type:String,
-        default:'writer'
+        type: String,
+        enum : ['user','admin','writter'],
+        default: 'user'
+    
     },
     phone:{
         type:String,
-        unique:true
+        // unique:true
     },
-    password:{
+    hash:{
         type:String,
-        required:true
+        // required:true
+    },
+    salt:{
+        type:String,
+        // required:true
     },
     created:{
         type:Date,
         default:Date.now
     }
-}));
+})
+module.exports = mongoose.model('user',User);;

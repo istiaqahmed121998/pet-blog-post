@@ -10,11 +10,11 @@ const auth=require('../../middleware/auth');
 //@desc Test router
 //@access Public
 
-routerProfile.get('/me',auth,async(req,res)=>{
+routerProfile.get('/me',async(req,res)=>{
     await Profile.findOne({user:req.user.id}).then(()=> {console.error((err.message));res.status(500).send('Server Error')}).catch(err=>res.status(400).json({msg:"There is no profile linked to this account"}) )
 })
 
-routerProfile.post('/me',auth,upload.single('avatar'),[
+routerProfile.post('/me',upload.single('avatar'),[
     check('bio')
     .trim()
     .escape(),
