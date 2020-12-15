@@ -1,4 +1,5 @@
 const express= require('express');
+const mongoose = require('mongoose');
 const routerBlog = express.Router();
 const upload = require('../../middleware/upload');
 const slugTitle = require('../../middleware/slug');
@@ -142,7 +143,7 @@ routerBlog.route('/:slug')
     }).catch((err) => next(err));
     
 });
-routerBlog.route('/*/comments')
+routerBlog.route('/comments')
 .get(async(req,res,next) => {
     await Blog.findById({slug:req._parsedUrl.href})
     .then((blog) => {
@@ -273,5 +274,30 @@ routerBlog.route('/:blogId/comments/:commentId')
         }
     }, (err) => next(err))
     .catch((err) => next(err));
-})
+});
+routerBlog.get('/tag/:tag',async(req,res)=>{
+    await Tag.findOne({value:req.params.tag},async(err,tag)=>{
+        await Blog.find({
+            'tags': { $in: 
+                mongoose.Types.ObjectId(tag.id),
+
+            }
+        }, function(err, blog){
+             res.json(blog);
+        }).populate("author tags categories","-phone -active -created -role -__v");
+    })
+});
+routerBlog.get('/category/:category',async(req,res)=>{
+    console.log(req.params.category)
+    await Category.findOne({value:req.params.category},async(err,category)=>{
+        await Blog.find({
+            'categories': { $in: 
+                mongoose.Types.ObjectId(category.id),
+
+            }
+        }, function(err, blog){
+             res.json(blog);
+        }).populate("author tags categories","-phone -active -created -role -__v");
+    })
+});
 module.exports =routerBlog;
