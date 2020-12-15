@@ -10,8 +10,8 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
     },
     slug:{
         type:String,
-        // unique: true,
-        // required:true
+        unique: true,
+        required:true
     },
     summary:{
         type:String,
@@ -25,7 +25,7 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
     },
     author:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:'profile'
+        ref:'user'
     },
     comments:[
         {
@@ -39,10 +39,10 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
             ref:'tag'
         }
     ],
-    catergory:[
+    categories:[
         {
             type:mongoose.Schema.Types.ObjectId,
-            ref:'catergory'
+            ref:'category'
         }
     ],
     created:{

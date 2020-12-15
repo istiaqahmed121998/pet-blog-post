@@ -16,52 +16,89 @@ const auth=require('../../middleware/auth');
 //@get all blogs
 routerBlog.route('/')
 .get(async(req,res,next) => {
-    await Blog.find({})
+    await Blog.find({}).populate("author tags categories","-phone -active -created -role -__v")
     .then((blogs) => {
         res.json(blogs);
     }, (err) => next(err))
     .catch((err) => next(err));
 }).post([
-    check('title','Title is required').not(),
-    check('text').isLength({min:1000}),
+    check('title','Title is required').not().isEmpty(),
+    check('text').isLength({min:100}),
 ],auth.verifyUser,auth.verifyWritter,upload.single('image'),async(req, res, next) => {
-    const{title,metaTitle,text}=req.body;
-    const article={};
-    article.title=title;
-    article.metaTitle=metaTitle;
-    article.slug=slugTitle.slugUrl(title);
-    article.text=text;
-    article.updated=[new Date()];
-    if(req.file)
-        article.image=req.file.path;
-    await Blog.findOne({slug:article.slug},async(err,blog)=>{
-        if(blog){
-            return res.status(400).json({ msg: "Blog already exist" });
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
-        blog=new Blog(article);
-        await blog.save()
-        .then((blog) => {
-            res.json(blog);
-        }, (err) => next(err))
-        .catch((err) => next(err));
-    });
-
-})
+        const{title,metaTitle,text,tag,category}=req.body;
+        const article={};
+        article.title=title;
+        article.metaTitle=metaTitle;
+        article.slug=slugTitle.slugUrl(title);
+        article.text=text;
+        article.updated=[new Date()];
+        article.author=req.user.id;
+        let tags=[];
+        let categories=[]
+        var uniqueTag = tag.split(',').filter((v, i, a) => a.indexOf(v) === i);
+        var uniqueCategories=category.split(',').filter((v, i, a) => a.indexOf(v) === i);
+        if(req.file)
+            article.image=req.file.path;
+        uniqueTag.forEach((v)=>{
+            Tag.findOne({value:v},async(err,tag)=>{
+                if(tag){
+                    tags.push(tag.id);
+                }
+                else{
+                    await new Tag({
+                        value:v
+                    }).save().then((tag)=>tags.push(tag.id))
+                }
+            }).catch(err=>next(err))
+        });
+        uniqueCategories.forEach((v)=>{
+            //console.log(v);
+            Category.findOne({value:v},async(err,category)=>{
+                if(category){
+                    categories.push(category.id);
+                }
+                else{
+                    await new Category({
+                        value:v
+                    }).save().then((category)=>categories.push(category.id))
+                }
+                console.log(category);
+            }).catch(err=>next(err))
+        })
+        console.log(tags);
+        article.tags=tags;
+        article.categories=categories;
+        await Blog.findOne({slug:article.slug},async(err,blog)=>{
+            if(blog){
+                return res.status(400).json({ msg: "Blog already exist" });
+            }
+            blog=new Blog(article);
+            await blog.save()
+            .then((blog) => {
+                res.json(blog);
+            }, (err) => next(err))
+            .catch((err) => next(err));
+        });
+    }
+)
 .put(async (req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /blogs');
 })
-.delete(async(req, res, next) => {
+.delete(auth.verifyUser,auth.verifyAdmin,async(req, res, next) => {
     await Blog.remove({})
     .then((resp) => {
         res.json(resp);
     }, (err) => next(err))
     .catch((err) => next(err));    
 });
-
-routerBlog.route('/:blogId')
+routerBlog.route('/:slug')
 .get(async (req,res,next) => {
-    await Blog.findById(req.params.blogId)
+    await Blog.findOne({slug:req.params.slug}).populate("author tags categories","-phone -active -created -role -__v")
     .then((blog) => {
         res.json(blog);
     }, (err) => next(err))
@@ -69,28 +106,45 @@ routerBlog.route('/:blogId')
 })
 .post(async (req, res, next) => {
     res.statusCode = 403;
-    res.end('POST operation not supported on /blogs/'+ req.params.blogId);
+    res.end('POST operation not supported on /blogs/'+ req.params.blogID);
 })
-.put(async (req, res, next) => {
-    await Blog.findByIdAndUpdate(req.params.blogId, {
-        $set: req.body
-    }, { new: true })
-    .then((blog) => {
-        res.json(blog);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+.put(auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
+    await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
+        console.log(req.user)
+        if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
+            await Blog.findByIdAndUpdate(blog.id, {
+                $set: req.body
+            }, { new: true })
+            .then((blog) => {
+                res.json(blog);
+            }, (err) => next(err))
+            .catch((err) => next(err));
+        }
+        else{
+            var err=new Error("You are not admin/Author of this blog");
+            return res.status(401).send({ error : err.message })
+        }
+    }).catch((err) => next(err));
 })
-.delete(async (req, res, next) => {
-    await Blog.findByIdAndRemove(req.params.blogId)
-    .then((blog) => {
-        res.json(blog);
-    }, (err) => next(err))
-    .catch((err) => next(err));
+.delete(auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
+    await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
+        if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
+            await Blog.findByIdAndRemove(blog.id)
+            .then((blog) => {
+                res.json(blog);
+            }, (err) => next(err))
+            .catch((err) => next(err));
+        }
+        else{
+            var err=new Error("You are not admin/Author of this blog");
+            return res.status(401).send({ error : err.message })
+        }
+    }).catch((err) => next(err));
+    
 });
-
-routerBlog.route('/:blogId/comments')
+routerBlog.route('/*/comments')
 .get(async(req,res,next) => {
-    await Blog.findById(req.params.blogId)
+    await Blog.findById({slug:req._parsedUrl.href})
     .then((blog) => {
         if (blog != null) {
             res.json(blog.comments);

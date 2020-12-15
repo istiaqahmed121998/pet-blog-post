@@ -91,9 +91,12 @@ routerUser.post('/login', (req, res) => {
       next(err);
   });
 });
-routerUser.get('/protectedAdmin',auth.verifyUser,auth.verifyAdmin,async(req,res)=>{
-
-  res.send('user');
+routerUser.get('/userlist',auth.verifyUser,auth.verifyAdmin,async(req,res)=>{
+  await User.find({})
+  .then((blogs) => {
+      res.json(blogs);
+  }, (err) => next(err))
+  .catch((err) => next(err));
 });
 routerUser.get('/protectedWritter',auth.verifyUser,auth.verifyWritter,async(req,res)=>{
 

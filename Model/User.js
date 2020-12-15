@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const User=new mongoose.Schema({
     name:{
         type:String,
-        // required:true
+        required:true
     },
     email:{
         type:String,
@@ -14,19 +14,20 @@ const User=new mongoose.Schema({
         type: String,
         enum : ['user','admin','writter'],
         default: 'user'
-    
-    },
-    phone:{
-        type:String,
-        // unique:true
     },
     hash:{
         type:String,
-        // required:true
+        required:true,
+        select:false
     },
     salt:{
         type:String,
-        // required:true
+        required:true,
+        select:false
+    },
+    active:{
+        type:Boolean,
+        default:false
     },
     created:{
         type:Date,

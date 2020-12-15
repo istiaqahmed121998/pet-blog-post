@@ -19,9 +19,10 @@ routerProfile.post('/me',upload.single('avatar'),[
     .trim()
     .escape(),
 ],async(req,res)=>{
-    const {dateofbirth,facebook,twitter,linkedin,instagram,website}=req.body;
+    const {phone,dateofbirth,facebook,twitter,linkedin,instagram,website}=req.body;
     const profileField={};
     profileField.user=req.user.id;
+    profileField.phone=phone
 
     if(req.file)
         profileField.avatar=req.file.path;

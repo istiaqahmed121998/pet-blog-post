@@ -49,3 +49,12 @@ exports.verifyWritter=(req,res,next)=>{
      return next();
     }
 }
+exports.verifyAdmin=(req,res,next)=>{
+    if(req.user.role=='admin') {
+        return next();
+    }
+    else{
+        var err=new Error("You are not admin");
+        return res.status(401).send({ error : err.message })
+    }
+}

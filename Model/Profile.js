@@ -4,6 +4,11 @@ module.exports = mongoose.model('profile',new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:'user'
     },
+    phone:{
+        type:String,
+        unique:true
+    }
+    ,
     avatar:{
         type:String,
         default:null
