@@ -11,18 +11,20 @@ const Profile=require('../../Model/Profile');
 const User = require('../../Model/User');
 const { check ,validationResult} = require('express-validator');
 const auth=require('../../middleware/auth');
+const cors = require('./cors')
 //@route GET api/blog
 //@desc Test router
 //@access Public
 //@get all blogs
 routerBlog.route('/')
-.get(async(req,res,next) => {
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get(cors.cors,async(req,res,next) => {
     await Blog.find({}).populate("author tags categories","-phone -active -created -role -__v")
     .then((blogs) => {
         res.json(blogs);
     }, (err) => next(err))
     .catch((err) => next(err));
-}).post([
+}).post(cors.corsWithOptions,[
     check('title','Title is required').not().isEmpty(),
     check('text').isLength({min:100}),
 ],auth.verifyUser,auth.verifyWritter,upload.single('image'),async(req, res, next) => {
@@ -86,11 +88,11 @@ routerBlog.route('/')
         });
     }
 )
-.put(async (req, res, next) => {
+.put(cors.corsWithOptions,async (req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /blogs');
 })
-.delete(auth.verifyUser,auth.verifyAdmin,async(req, res, next) => {
+.delete(cors.corsWithOptions,auth.verifyUser,auth.verifyAdmin,async(req, res, next) => {
     await Blog.remove({})
     .then((resp) => {
         res.json(resp);
@@ -98,18 +100,19 @@ routerBlog.route('/')
     .catch((err) => next(err));    
 });
 routerBlog.route('/:slug')
-.get(async (req,res,next) => {
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get(cors.cors,async (req,res,next) => {
     await Blog.findOne({slug:req.params.slug}).populate("author tags categories","-phone -active -created -role -__v")
     .then((blog) => {
         res.json(blog);
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.post(async (req, res, next) => {
+.post(cors.corsWithOptions,async (req, res, next) => {
     res.statusCode = 403;
     res.end('POST operation not supported on /blogs/'+ req.params.blogID);
 })
-.put(auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
+.put(cors.corsWithOptions,auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
     await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
         console.log(req.user)
         if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
@@ -127,7 +130,7 @@ routerBlog.route('/:slug')
         }
     }).catch((err) => next(err));
 })
-.delete(auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
+.delete(cors.corsWithOptions,auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
     await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
         if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
             await Blog.findByIdAndRemove(blog.id)
@@ -143,8 +146,9 @@ routerBlog.route('/:slug')
     }).catch((err) => next(err));
     
 });
-routerBlog.route('/comments')
-.get(async(req,res,next) => {
+routerBlog.route('/:slug/comments')
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get(cors.cors,async(req,res,next) => {
     await Blog.findById({slug:req._parsedUrl.href})
     .then((blog) => {
         if (blog != null) {
@@ -158,7 +162,7 @@ routerBlog.route('/comments')
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.post(async(req, res, next) => {
+.post(cors.corsWithOptions,async(req, res, next) => {
     await Blog.findById(req.params.blogId)
     .then((blog) => {
         if (blog != null) {
@@ -176,12 +180,12 @@ routerBlog.route('/comments')
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.put(async(req, res, next) => {
+.put(cors.corsWithOptions,async(req, res, next) => {
     res.statusCode = 403;
     res.end('PUT operation not supported on /Blog/'
         + req.params.dishId + '/comments');
 })
-.delete(async(req, res, next) => {
+.delete(cors.corsWithOptions,async(req, res, next) => {
     await Blog.findById(req.params.dishId)
     .then((blog) => {
         if (blog != null) {
@@ -202,8 +206,9 @@ routerBlog.route('/comments')
     .catch((err) => next(err));    
 });
 
-routerBlog.route('/:blogId/comments/:commentId')
-.get(async(req,res,next) => {
+routerBlog.route('/:slug/comments/:commentId')
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get(cors.cors,async(req,res,next) => {
     await Blog.findById(req.params.blogId)
     .then((blog) => {
         if (blog != null && blog.comments.id(req.params.commentId) != null) {
@@ -222,12 +227,12 @@ routerBlog.route('/:blogId/comments/:commentId')
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.post(async(req, res, next) => {
+.post(cors.corsWithOptions,async(req, res, next) => {
     res.statusCode = 403;
     res.end('POST operation not supported on /dishes/'+ req.params.dishId
         + '/comments/' + req.params.commentId);
 })
-.put(async(req, res, next) => {
+.put(cors.corsWithOptions,async(req, res, next) => {
     await Blog.findById(req.params.dishId)
     .then((blog) => {
         if (blog != null && blog.comments.id(req.params.commentId) != null) {
@@ -252,7 +257,7 @@ routerBlog.route('/:blogId/comments/:commentId')
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.delete(async(req, res, next) => {
+.delete(cors.corsWithOptions,async(req, res, next) => {
     await Blog.findById(req.params.blogId)
     .then((blog) => {
         if (blog != null && blog.comments.id(req.params.commentId) != null) {
@@ -275,7 +280,9 @@ routerBlog.route('/:blogId/comments/:commentId')
     }, (err) => next(err))
     .catch((err) => next(err));
 });
-routerBlog.get('/tag/:tag',async(req,res)=>{
+routerBlog
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get('/tag/:tag',cors.cors,async(req,res)=>{
     await Tag.findOne({value:req.params.tag},async(err,tag)=>{
         await Blog.find({
             'tags': { $in: 
@@ -287,7 +294,9 @@ routerBlog.get('/tag/:tag',async(req,res)=>{
         }).populate("author tags categories","-phone -active -created -role -__v");
     })
 });
-routerBlog.get('/category/:category',async(req,res)=>{
+routerBlog
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get('/category/:category',cors.cors,async(req,res)=>{
     console.log(req.params.category)
     await Category.findOne({value:req.params.category},async(err,category)=>{
         await Blog.find({

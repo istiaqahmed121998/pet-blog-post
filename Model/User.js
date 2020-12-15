@@ -18,12 +18,10 @@ const User=new mongoose.Schema({
     hash:{
         type:String,
         required:true,
-        select:false
     },
     salt:{
         type:String,
         required:true,
-        select:false
     },
     active:{
         type:Boolean,

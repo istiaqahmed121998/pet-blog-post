@@ -64,7 +64,7 @@ routerUser.post('/create-user',[
     }
   }  
 );
-routerUser.post('/login', (req, res) => {
+routerUser.post('/login', (req, res,next) => {
   const {email,password}=req.body;
   User.findOne({ email })
   .then((user) => {
@@ -74,7 +74,10 @@ routerUser.post('/login', (req, res) => {
       }
 
       // Function defined at bottom of app.js
+      console.log(user);
+
       const isValid = utils.validPassword(password, user.hash, user.salt);
+      
 
       if (isValid) {
 
@@ -88,7 +91,7 @@ routerUser.post('/login', (req, res) => {
 
   })
   .catch((err) => {   
-      next(err);
+      return next(err);
   });
 });
 routerUser.get('/userlist',auth.verifyUser,auth.verifyAdmin,async(req,res)=>{
