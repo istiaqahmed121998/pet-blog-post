@@ -11,7 +11,8 @@ const Profile=require('../../Model/Profile');
 const User = require('../../Model/User');
 const { check ,validationResult} = require('express-validator');
 const auth=require('../../middleware/auth');
-const cors = require('./cors')
+const cors = require('./cors');
+const { findById } = require('../../Model/Blog');
 //@route GET api/blog
 //@desc Test router
 //@access Public
@@ -25,7 +26,7 @@ routerBlog.route('/')
         populate: {
           path: 'commenter',
           model: 'user',
-          select:{ 'hash': 0, 'salt': 0}
+          select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
         },
         // 
      })
@@ -71,7 +72,6 @@ routerBlog.route('/')
             }).catch(err=>next(err))
         });
         uniqueCategories.forEach((v)=>{
-            //console.log(v);
             Category.findOne({value:v},async(err,category)=>{
                 if(category){
                     categories.push(category.id);
@@ -114,6 +114,15 @@ routerBlog.route('/:slug')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async (req,res,next) => {
     await Blog.findOne({slug:req.params.slug}).populate("author tags categories","-phone -active -created -role -__v")
+    .populate({ 
+        path: 'comments',
+        populate: {
+          path: 'commenter',
+          model: 'user',
+          select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
+        },
+        // 
+     })
     .then((blog) => {
         res.json(blog);
     }, (err) => next(err))
@@ -160,6 +169,15 @@ routerBlog.route('/:slug/comments')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async(req,res,next) => {
     await Blog.findOne({slug:req.params.slug})
+    .populate({ 
+        path: 'comments',
+        populate: {
+          path: 'commenter',
+          model: 'user',
+          select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
+        },
+        // 
+     })
     .then((blog) => {
         if (blog) {
             res.json(blog.comments);
@@ -222,24 +240,42 @@ routerBlog.route('/:slug/comments')
     .catch((err) => next(err));    
 });
 
-routerBlog.route('/:slug/comments/:commentId')
+routerBlog.route('/:slug/comments/:commentID')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async(req,res,next) => {
-    await Blog.findById(req.params.blogId)
-    .then((blog) => {
-        if (blog != null && blog.comments.id(req.params.commentId) != null) {
-            res.json(dish.comments.id(req.params.commentId));
+    await Blog.findOne({slug:req.params.slug})
+    .then(async(blog) => {
+        if(blog){
+            if(blog.comments.indexOf(req.params.commentID)!==-1){
+                await Comment.findById(req.params.commentID)
+                .populate({ 
+                      path: 'commenter',
+                      model: 'user',
+                      select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
+                    
+                    // 
+                 })
+                .then((comment)=>{
+                    res.send(comment);
+                })
+            }
+            else return res.status(400).json({ msg: "Comment already exist" });
         }
-        else if (dish == null) {
-            err = new Error('Blog ' + req.params.blogId + ' not found');
-            err.status = 404;
-            return next(err);
-        }
-        else {
-            err = new Error('Comment ' + req.params.commentId + ' not found');
-            err.status = 404;
-            return next(err);            
-        }
+        else return res.status(400).json({ msg: "Blog already exist" });
+        // console.log(blog.comments);
+        // if (blog != null && blog.comments.id(req.params.commentID) != null) {
+        //     res.json(dish.comments.id(req.params.commentID));
+        // }
+        // else if (dish == null) {
+        //     err = new Error('Blog ' + req.params.blogId + ' not found');
+        //     err.status = 404;
+        //     return next(err);
+        // }
+        // else {
+        //     err = new Error('Comment ' + req.params.commentId + ' not found');
+        //     err.status = 404;
+        //     return next(err);            
+        // }
     }, (err) => next(err))
     .catch((err) => next(err));
 })
