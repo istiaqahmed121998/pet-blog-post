@@ -19,19 +19,31 @@ const cors = require('./cors')
 routerBlog.route('/')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async(req,res,next) => {
-    await Blog.find({}).populate("author tags categories","-phone -active -created -role -__v")
+    await Blog.find({}).populate("author tags categories","-phone -active -hash -salt -created -role -__v")
+    .populate({ 
+        path: 'comments',
+        populate: {
+          path: 'commenter',
+          model: 'user',
+          select:{ 'hash': 0, 'salt': 0}
+        },
+        // 
+     })
+    // .populate('comments.commenter', '-hash -salt')
     .then((blogs) => {
         res.json(blogs);
     }, (err) => next(err))
     .catch((err) => next(err));
 }).post(cors.corsWithOptions,[
-    check('title','Title is required').not().isEmpty(),
-    check('text').isLength({min:100}),
+    // check('title','Title is required').not().isEmpty(),
+    // check('text').isLength({min:100}),
 ],auth.verifyUser,auth.verifyWritter,upload.single('image'),async(req, res, next) => {
+    console.log(req.body)
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
+        console.log(req.body)
         const{title,metaTitle,text,tag,category}=req.body;
         const article={};
         article.title=title;
@@ -69,7 +81,6 @@ routerBlog.route('/')
                         value:v
                     }).save().then((category)=>categories.push(category.id))
                 }
-                console.log(category);
             }).catch(err=>next(err))
         })
         console.log(tags);
@@ -113,8 +124,7 @@ routerBlog.route('/:slug')
     res.end('POST operation not supported on /blogs/'+ req.params.blogID);
 })
 .put(cors.corsWithOptions,auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
-    await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
-        console.log(req.user)
+    await Blog.findOne({slug:req.params.slug}).then(async(blog)=>{
         if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
             await Blog.findByIdAndUpdate(blog.id, {
                 $set: req.body
@@ -149,28 +159,34 @@ routerBlog.route('/:slug')
 routerBlog.route('/:slug/comments')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async(req,res,next) => {
-    await Blog.findById({slug:req._parsedUrl.href})
+    await Blog.findOne({slug:req.params.slug})
     .then((blog) => {
-        if (blog != null) {
+        if (blog) {
             res.json(blog.comments);
         }
         else {
-            err = new Error('Blog ' + req.params.blogId + ' not found');
+            err = new Error('Blog ' + req.params.slug + ' not found');
             err.status = 404;
             return next(err);
         }
     }, (err) => next(err))
     .catch((err) => next(err));
 })
-.post(cors.corsWithOptions,async(req, res, next) => {
-    await Blog.findById(req.params.blogId)
-    .then((blog) => {
-        if (blog != null) {
-            blog.comments.push(req.body);
-            blog.save()
-            .then((blog) => {
-                res.json(blog);                
-            }, (err) => next(err));
+.post(auth.verifyUser,cors.corsWithOptions,async(req, res, next) => {
+    
+    await Blog.findOne({slug:req.params.slug})
+    .then(async(blog) => {
+        if (blog) {
+            await new Comment({
+                comment:req.body.comment,
+                commenter:req.user.id
+            }).save().then(async(comment)=>{
+                blog.comments.push(comment.id);
+                await blog.save()
+                .then((blog) => {
+                    res.json(blog);                
+                }, (err) => next(err));
+            })
         }
         else {
             err = new Error('Blog ' + req.params.blogId + ' not found');

@@ -14,7 +14,7 @@ routerProfile.get('/me',async(req,res)=>{
     await Profile.findOne({user:req.user.id}).then(()=> {console.error((err.message));res.status(500).send('Server Error')}).catch(err=>res.status(400).json({msg:"There is no profile linked to this account"}) )
 })
 
-routerProfile.post('/me',upload.single('avatar'),[
+routerProfile.post('/me',upload.single('avater'),[
     check('bio')
     .trim()
     .escape(),
