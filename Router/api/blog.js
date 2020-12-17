@@ -12,7 +12,9 @@ const User = require('../../Model/User');
 const { check ,validationResult} = require('express-validator');
 const auth=require('../../middleware/auth');
 const cors = require('./cors');
+const Utils=require('../../lib/utils');
 const { findById } = require('../../Model/Blog');
+mongoose.Promise=global.Promise
 //@route GET api/blog
 //@desc Test router
 //@access Public
@@ -36,10 +38,11 @@ routerBlog.route('/')
     }, (err) => next(err))
     .catch((err) => next(err));
 }).post(cors.corsWithOptions,[
-    // check('title','Title is required').not().isEmpty(),
-    // check('text').isLength({min:100}),
+    check('title','Title is required').not().isEmpty(),
+    check('text').isLength({min:100}),
+    check('tag','Tag is required').not().isEmpty(),
+    check('category','Category is required').not().isEmpty(),
 ],auth.verifyUser,auth.verifyWritter,upload.single('image'),async(req, res, next) => {
-    console.log(req.body)
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
@@ -133,10 +136,88 @@ routerBlog.route('/:slug')
     res.end('POST operation not supported on /blogs/'+ req.params.blogID);
 })
 .put(cors.corsWithOptions,auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
-    await Blog.findOne({slug:req.params.slug}).then(async(blog)=>{
+    Blog.findOne({slug:req.params.slug}).then(async(blog)=>{
         if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
-            await Blog.findByIdAndUpdate(blog.id, {
-                $set: req.body
+            const{title,metaTitle,text}=req.body;
+            article={};
+            if(title){
+                article.title=title;
+                article.slug=slugTitle.slugUrl(title);}
+
+            if(metaTitle)
+                article.metaTitle=metaTitle;
+            if(text)
+                article.text=text;
+            var uniqueTag = tag.split(',').filter((v, i, a) => a.indexOf(v) === i);
+            //var uniqueCategories=category.split(',').filter((v, i, a) => a.indexOf(v) === i);
+            // try {
+            //     const promises = uniqueTag.map(function (value) {
+            //         //here i am assigning foreign key
+            //         // let alldata = new League(body);
+            //         // alldata.league_category_id = category._id;
+            //         // return alldata.save();
+
+            //         console.log()
+            //         Tag.findOne(value,(err,tag)=>{
+            //             if(tag){
+            //                 blog.tags.push(tag.id);
+            //                 blog.save();
+            //             }
+            //             else{
+            //                 new Tag({
+            //                     value:value
+            //                 }).save().then((tag)=>{
+            //                     blog.tags.push(tag.id);
+            //                     blog.save();
+            //                 })
+            //             }
+                        
+            //         }).catch(err=>next(err))
+            //     });
+            //     await Promise.all(promises);
+            // // uniqueTag.forEach(async(v)=>{
+            // //     await Tag.findOne({value:v},async(err,tag)=>{
+            // //         if(tag){
+            // //             blog.tags.push(tag.id);
+            // //             await blog.save();
+            // //         }
+            // //         else{
+            // //             await new Tag({
+            // //                 value:v
+            // //             }).save().then(async(tag)=>{
+            // //                 blog.tags.push(tag.id);
+            // //                 await blog.save();
+            // //             })
+            // //             console.log(tag);
+            // //         }
+                    
+            // //     }).catch(err=>next(err))
+            // // });
+            // // uniqueCategories.forEach(async(v)=>{
+            // //     await Category.findOne({value:v},async(err,category)=>{
+            // //         if(category){
+            // //             blog.categories.push(category.id);
+            // //             await blog.save();
+            // //         }
+            // //         else{
+            // //             await new Category({
+            // //                 value:v
+            // //             }).save().then(async(category)=>{
+            // //                 blog.categories.push(category.id);
+            // //                 await blog.save();
+            // //             })
+            // //         }
+            // //     }).catch(err=>next(err))
+            // // })
+            // }
+            // catch (error) {
+            //     return res.send({ status: 1, statusCode: "error", message: error.message });
+            // }
+            await Blog.findOneAndUpdate({slug:req.params.slug}, {
+                $set: article,
+                $push: {
+                    updated:{$each:[new Date()]}
+                }
             }, { new: true })
             .then((blog) => {
                 res.json(blog);
@@ -150,7 +231,7 @@ routerBlog.route('/:slug')
     }).catch((err) => next(err));
 })
 .delete(cors.corsWithOptions,auth.verifyUser,auth.verifyWritter,async (req, res, next) => {
-    await Blog.findOne({slug:req._parsedUrl.href}).then(async(blog)=>{
+    await Blog.findOne({slug:req.params.slug}).then(async(blog)=>{
         if(blog.id==req.params.blogID && blog.author==req.user.id || req.user.role=='admin'){
             await Blog.findByIdAndRemove(blog.id)
             .then((blog) => {
@@ -163,7 +244,6 @@ routerBlog.route('/:slug')
             return res.status(401).send({ error : err.message })
         }
     }).catch((err) => next(err));
-    
 });
 routerBlog.route('/:slug/comments')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
@@ -222,7 +302,7 @@ routerBlog.route('/:slug/comments')
 .delete(cors.corsWithOptions,async(req, res, next) => {
     await Blog.findById(req.params.dishId)
     .then((blog) => {
-        if (blog != null) {
+        if (blog) {
             for (var i = (blog.comments.length -1); i >= 0; i--) {
                 blog.comments.id(blog.comments[i]._id).remove();
             }
@@ -262,20 +342,6 @@ routerBlog.route('/:slug/comments/:commentID')
             else return res.status(400).json({ msg: "Comment already exist" });
         }
         else return res.status(400).json({ msg: "Blog already exist" });
-        // console.log(blog.comments);
-        // if (blog != null && blog.comments.id(req.params.commentID) != null) {
-        //     res.json(dish.comments.id(req.params.commentID));
-        // }
-        // else if (dish == null) {
-        //     err = new Error('Blog ' + req.params.blogId + ' not found');
-        //     err.status = 404;
-        //     return next(err);
-        // }
-        // else {
-        //     err = new Error('Comment ' + req.params.commentId + ' not found');
-        //     err.status = 404;
-        //     return next(err);            
-        // }
     }, (err) => next(err))
     .catch((err) => next(err));
 })
@@ -361,4 +427,8 @@ routerBlog
         }).populate("author tags categories","-phone -active -created -role -__v");
     })
 });
+
+routerBlog.route('/page/:number/limit/:limit').get(Utils.paginatedResults(Blog), (req, res) => {
+    res.json(res.paginatedResults)
+  })
 module.exports =routerBlog;
