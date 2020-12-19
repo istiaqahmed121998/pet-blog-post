@@ -22,7 +22,7 @@ mongoose.Promise=global.Promise
 routerBlog.route('/')
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get(cors.cors,async(req,res,next) => {
-    await Blog.find({}).populate("author tags categories","-phone -active -hash -salt -created -role -__v")
+    await Blog.find({}).populate("tags author categories","-phone -active -created -role -__v")
     .populate({ 
         path: 'comments',
         populate: {
@@ -30,9 +30,15 @@ routerBlog.route('/')
           model: 'user',
           select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
         },
-        // 
+    })
+    .populate({ 
+        path: 'author',
+        populate: {
+          path: 'user',
+          model: 'user',
+          select:{ 'hash': 0, 'salt': 0,'role':0,'active':0,'created':0}
+        },
      })
-    // .populate('comments.commenter', '-hash -salt')
     .then((blogs) => {
         res.json(blogs);
     }, (err) => next(err))
@@ -47,59 +53,70 @@ routerBlog.route('/')
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        console.log(req.body)
-        const{title,metaTitle,text,tag,category}=req.body;
-        const article={};
-        article.title=title;
-        article.metaTitle=metaTitle;
-        article.slug=slugTitle.slugUrl(title);
-        article.text=text;
-        article.updated=[new Date()];
-        article.author=req.user.id;
-        let tags=[];
-        let categories=[]
-        var uniqueTag = tag.split(',').filter((v, i, a) => a.indexOf(v) === i);
-        var uniqueCategories=category.split(',').filter((v, i, a) => a.indexOf(v) === i);
-        if(req.file)
-            article.image=req.file.path;
-        uniqueTag.forEach((v)=>{
-            Tag.findOne({value:v},async(err,tag)=>{
-                if(tag){
-                    tags.push(tag.id);
-                }
-                else{
-                    await new Tag({
-                        value:v
-                    }).save().then((tag)=>tags.push(tag.id))
-                }
-            }).catch(err=>next(err))
-        });
-        uniqueCategories.forEach((v)=>{
-            Category.findOne({value:v},async(err,category)=>{
-                if(category){
-                    categories.push(category.id);
-                }
-                else{
-                    await new Category({
-                        value:v
-                    }).save().then((category)=>categories.push(category.id))
-                }
-            }).catch(err=>next(err))
-        })
-        console.log(tags);
-        article.tags=tags;
-        article.categories=categories;
-        await Blog.findOne({slug:article.slug},async(err,blog)=>{
-            if(blog){
-                return res.status(400).json({ msg: "Blog already exist" });
+        Profile.findOne({user:req.user.id}).then(async(profile)=>{
+            if(profile){
+                const{title,metaTitle,text,tag,category}=req.body;
+                const article={};
+                article.title=title;
+                article.metaTitle=metaTitle;
+                article.slug=slugTitle.slugUrl(title);
+                article.text=text;
+                article.updated=[new Date()];
+                article.author=profile.id;
+                let tags=[];
+                let categories=[]
+                var uniqueTag = tag.split(',').filter((v, i, a) => a.indexOf(v) === i);
+                var uniqueCategories=category.split(',').filter((v, i, a) => a.indexOf(v) === i);
+                if(req.file)
+                    article.image=req.file.path;
+                uniqueTag.forEach((v)=>{
+                    Tag.findOne({value:v},async(err,tag)=>{
+                        if(tag){
+                            tags.push(tag.id);
+                        }
+                        else{
+                            await new Tag({
+                                value:v
+                            }).save().then((tag)=>{
+                                tags.push(tag.id)
+                            })
+                        }
+                    }).catch(err=>next(err))
+                });
+                uniqueCategories.forEach((v)=>{
+                    Category.findOne({value:v},async(err,category)=>{
+                        if(category){
+                            categories.push(category.id);
+                        }
+                        else{
+                            await new Category({
+                                value:v
+                            }).save().then((category)=>{
+                                categories.push(category.id)
+                            })
+                        }
+                    }).catch(err=>next(err))
+                })
+                article.tags=tags;
+                article.categories=categories;
+
+                await Blog.findOne({slug:article.slug},async(err,blog)=>{
+                    if(blog){
+                        return res.status(400).json({ msg: "Blog already exist" });
+                    }
+                    blog=new Blog(article);
+                    await blog.save()
+                    .then((blog) => {
+                        res.json(blog);
+                    }, (err) => next(err))
+                    .catch((err) => next(err));
+                });
             }
-            blog=new Blog(article);
-            await blog.save()
-            .then((blog) => {
-                res.json(blog);
-            }, (err) => next(err))
-            .catch((err) => next(err));
-        });
+            else{
+                res.status(401).json({ success: false, msg: "Profile is not created"});
+            }
+        })
+        
     }
 )
 .put(cors.corsWithOptions,async (req, res, next) => {
@@ -156,70 +173,6 @@ routerBlog.route('/:slug')
             if(text)
                 article.text=text;
             var uniqueTag = tag.split(',').filter((v, i, a) => a.indexOf(v) === i);
-            //var uniqueCategories=category.split(',').filter((v, i, a) => a.indexOf(v) === i);
-            // try {
-            //     const promises = uniqueTag.map(function (value) {
-            //         //here i am assigning foreign key
-            //         // let alldata = new League(body);
-            //         // alldata.league_category_id = category._id;
-            //         // return alldata.save();
-
-            //         console.log()
-            //         Tag.findOne(value,(err,tag)=>{
-            //             if(tag){
-            //                 blog.tags.push(tag.id);
-            //                 blog.save();
-            //             }
-            //             else{
-            //                 new Tag({
-            //                     value:value
-            //                 }).save().then((tag)=>{
-            //                     blog.tags.push(tag.id);
-            //                     blog.save();
-            //                 })
-            //             }
-                        
-            //         }).catch(err=>next(err))
-            //     });
-            //     await Promise.all(promises);
-            // // uniqueTag.forEach(async(v)=>{
-            // //     await Tag.findOne({value:v},async(err,tag)=>{
-            // //         if(tag){
-            // //             blog.tags.push(tag.id);
-            // //             await blog.save();
-            // //         }
-            // //         else{
-            // //             await new Tag({
-            // //                 value:v
-            // //             }).save().then(async(tag)=>{
-            // //                 blog.tags.push(tag.id);
-            // //                 await blog.save();
-            // //             })
-            // //             console.log(tag);
-            // //         }
-                    
-            // //     }).catch(err=>next(err))
-            // // });
-            // // uniqueCategories.forEach(async(v)=>{
-            // //     await Category.findOne({value:v},async(err,category)=>{
-            // //         if(category){
-            // //             blog.categories.push(category.id);
-            // //             await blog.save();
-            // //         }
-            // //         else{
-            // //             await new Category({
-            // //                 value:v
-            // //             }).save().then(async(category)=>{
-            // //                 blog.categories.push(category.id);
-            // //                 await blog.save();
-            // //             })
-            // //         }
-            // //     }).catch(err=>next(err))
-            // // })
-            // }
-            // catch (error) {
-            //     return res.send({ status: 1, statusCode: "error", message: error.message });
-            // }
             await Blog.findOneAndUpdate({slug:req.params.slug}, {
                 $set: article,
                 $push: {
@@ -405,6 +358,19 @@ routerBlog.route('/:slug/comments/:commentID')
     }, (err) => next(err))
     .catch((err) => next(err));
 });
+routerBlog.route('/:slug/like').options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.post(cors.cors,async(req,res)=>{
+    await Blog.findOneAndUpdate(
+        {slug:req.params.slug},
+        {
+            $inc: { likes: 1 }
+        },
+        { new: true }
+    ).then((blog)=>{
+        res.json(blog);
+    })
+    
+})
 routerBlog
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get('/tag/:tag',cors.cors,async(req,res)=>{
@@ -422,7 +388,7 @@ routerBlog
 routerBlog
 .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
 .get('/category/:category',cors.cors,async(req,res)=>{
-    console.log(req.params.category)
+
     await Category.findOne({value:req.params.category},async(err,category)=>{
         await Blog.find({
             'categories': { $in: 
@@ -446,10 +412,18 @@ routerBlog
             { text: { '$regex': new RegExp('.*' + search.toLowerCase()+'.*'), '$options': 'i' } },
             
         ]
-    }).exec((users) => {
+    }).then((users) => {
         res.json(users);
     });
 });
+// routerBlog
+// .options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+// .get('/:author',cors.cors,async(req,res)=>{
+//     let search=req.params.searchkey;
+//     Blog.find().exec((users) => {
+//         res.json(users);
+//     });
+// });
 routerBlog.route('/page/:number/limit/:limit').get(Utils.paginatedResults(Blog), (req, res) => {
     res.json(res.paginatedResults)
 })

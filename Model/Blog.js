@@ -25,7 +25,7 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
     },
     author:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:'user'
+        ref:'profile'
     },
     comments:[
         {
@@ -45,6 +45,12 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
             ref:'category'
         }
     ],
+    likes:{
+        
+        type:Number,
+        default:0
+        
+    },
     visit:{
         type:Number,
         default:0

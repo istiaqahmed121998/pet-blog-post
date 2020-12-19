@@ -17,7 +17,7 @@ res.send('User Router');
 routerUser.post('/create-user',[
     check('name','Name is requires').not().isEmpty(),
     // username must be an email
-    check('username').isEmail(),
+    check('email').isEmail(),
     // password must be at least 5 chars long
     check('password').isLength({ min: 5 }),
     
@@ -74,7 +74,6 @@ routerUser.post('/login', (req, res,next) => {
       }
 
       // Function defined at bottom of app.js
-      console.log(user);
 
       const isValid = utils.validPassword(password, user.hash, user.salt);
       
