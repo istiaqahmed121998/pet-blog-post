@@ -45,6 +45,10 @@ module.exports = mongoose.model('blog',new mongoose.Schema({
             ref:'category'
         }
     ],
+    visit:{
+        type:Number,
+        default:0
+    },
     created:{
         type:Date,
         default:Date.now

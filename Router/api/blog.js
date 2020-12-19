@@ -126,7 +126,14 @@ routerBlog.route('/:slug')
         },
         // 
      })
-    .then((blog) => {
+    .then(async(blog) => {
+        await Blog.findByIdAndUpdate(
+			blog.id,
+			{
+				$inc: { visit: 1 }
+			},
+			{ new: true }
+		);
         res.json(blog);
     }, (err) => next(err))
     .catch((err) => next(err));
@@ -427,8 +434,23 @@ routerBlog
         }).populate("author tags categories","-phone -active -created -role -__v");
     })
 });
-
+routerBlog
+.options(cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+.get('/search/:searchkey',cors.cors,async(req,res)=>{
+    let search=req.params.searchkey;
+    Blog.find({
+        "$or": [
+            { title: { '$regex': new RegExp('.*' + search.toUpperCase()+'.*'), '$options': 'i' } },
+            { title: { '$regex': new RegExp('.*' + search.toLowerCase()+'.*'), '$options': 'i' } },
+            { text: { '$regex': new RegExp('.*' + search.toUpperCase()+'.*'), '$options': 'i' } },
+            { text: { '$regex': new RegExp('.*' + search.toLowerCase()+'.*'), '$options': 'i' } },
+            
+        ]
+    }).exec((users) => {
+        res.json(users);
+    });
+});
 routerBlog.route('/page/:number/limit/:limit').get(Utils.paginatedResults(Blog), (req, res) => {
     res.json(res.paginatedResults)
-  })
+})
 module.exports =routerBlog;
